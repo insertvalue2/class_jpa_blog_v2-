@@ -1,9 +1,12 @@
 package com.tenco.blog_v2.user;
 
+import com.tenco.blog_v2.common.errors.Exception401;
+import com.tenco.blog_v2.common.errors.Exception500;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,26 +19,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 public class UserController {
 
     // DI 처리
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final HttpSession session;
-
-
-
-    @PostMapping("/user/update")
-    public String update(@ModelAttribute(name = "updateDTO") UserDTO.UpdateDTO reqDTO) {
-        User sessionUser = (User) session.getAttribute("sessionUser");
-        if (sessionUser == null) {
-            return "redirect:/login-form";
-        }
-        // 유효성 검사는 생략
-        // 사용자 정보 수정
-        User updatedUser = userRepository.updateById(sessionUser.getId(), reqDTO.getPassword(), reqDTO.getEmail());
-        // 세션 정보 동기화 처리
-        session.setAttribute("sessionUser", updatedUser);
-        return "redirect:/";
-    }
-
-
 
     /**
      * 회원 정보 수정 페이지 요청
@@ -49,12 +34,11 @@ public class UserController {
     @GetMapping("/user/update-form")
     public String updateForm(HttpServletRequest request) {
         log.info("회원 수정 페이지");
-
         User sessionUser = (User) session.getAttribute("sessionUser");
         if(sessionUser == null) {
             return "redirect:/login-form";
         }
-        User user = userRepository.findById(sessionUser.getId());
+        User user = userService.readUser(sessionUser.getId());
         request.setAttribute("user", user);
 
         return "user/update-form"; // 템플릿 경로 : user/join-form.mustache
@@ -62,16 +46,21 @@ public class UserController {
 
 
     /**
-     * 회원 가입 기능 요청
-     * @param reqDto
-     * @return
+     * 사용자 정보 수정
+     * @param reqDTO
+     * @return 메인 페이지
      */
-    @PostMapping("/join")
-    public String join(@ModelAttribute(name = "joinDTO") UserDTO.JoinDTO reqDto)  {
-        userRepository.save(reqDto.toEntity());
-        return "redirect:/login-form";
+    @PostMapping("/user/update")
+    public String update(@ModelAttribute(name = "updateDTO") UserDTO.UpdateDTO reqDTO) {
+        User sessionUser = (User) session.getAttribute("sessionUser");
+        if (sessionUser == null) {
+            return "redirect:/login-form";
+        }
+        User updatedUser = userService.updateUser(sessionUser.getId(), reqDTO);
+        // 세션 정보 동기화 처리
+        session.setAttribute("sessionUser", updatedUser);
+        return "redirect:/";
     }
-
 
     /**
      * 회원가입 페이지 요청
@@ -89,35 +78,21 @@ public class UserController {
         return "user/join-form"; // 템플릿 경로 : user/join-form.mustache
     }
 
-
-
     /**
-     * 자원에 요청은 GET 방식이지만 보안에 이유로 예외 !
-     * 로그인 처리 메서드
-     * 요청 주소 POST : http://localhost:8080/login
+     * 회원 가입 기능 요청
      * @param reqDto
      * @return
      */
-    @PostMapping("/login")
-    public String login(UserDTO.LoginDTO reqDto) {
+    @PostMapping("/join")
+    public String join(@ModelAttribute(name = "joinDTO") UserDTO.JoinDTO reqDto)  {
+        // 유효성 검사 생략 ...
         try {
-            User sessionUser = userRepository.findByUsernameAndPassword(reqDto.getUsername(), reqDto.getPassword());
-            session.setAttribute("sessionUser", sessionUser);
-            return  "redirect:/";
-        } catch (Exception e) {
-            // 로그인 실패
-            return "redirect:/login-form";
+            userService.signUp(reqDto);
+        } catch (DataIntegrityViolationException e) {
+            throw new Exception500("동일한 유저네임이 존재 합니다.");
         }
+        return "redirect:/login-form";
     }
-
-    @GetMapping("/logout")
-    public String logout() {
-        session.invalidate(); // 세션을 무효화 (로그아웃)
-        return "redirect:/";
-    }
-
-
-
 
     /**
      * 로그인 페이지 요청
@@ -136,13 +111,28 @@ public class UserController {
     }
 
 
+    /**
+     * 자원에 요청은 GET 방식이지만 보안에 이유로 예외 !
+     * 로그인 처리 메서드
+     * 요청 주소 POST : http://localhost:8080/login
+     * @param reqDto
+     * @return
+     */
+    @PostMapping("/login")
+    public String login(UserDTO.LoginDTO reqDto) {
+        try {
+            User sessionUser = userService.signIn(reqDto);
+            session.setAttribute("sessionUser", sessionUser);
+            return  "redirect:/";
+        } catch (Exception e) {
+            throw new Exception401("유저이름 또는 비밀번호가 틀렸습니다.");
+        }
+    }
 
-
+    @GetMapping("/logout")
+    public String logout() {
+        session.invalidate(); // 세션을 무효화 (로그아웃)
+        return "redirect:/";
+    }
 
 }
-
-
-
-
-
-

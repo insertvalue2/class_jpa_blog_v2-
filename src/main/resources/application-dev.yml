@@ -4,6 +4,9 @@ server:
       charset: utf-8
       force: true
   port: 8080
+  error:
+    whitelabel:
+      enabled: true   # 뷰 렌더링 오류 활성화 여부
 
 spring:
   mustache:

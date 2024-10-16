@@ -23,6 +23,7 @@ public class UserDTO {
             return User.builder()
                     .username(username)
                     .password(password)
+                    .role("USER")
                     .email(email)
                     .build();
         }
