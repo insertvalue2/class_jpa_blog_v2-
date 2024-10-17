@@ -38,7 +38,8 @@ public class Board {
     boolean isBoardOwner;
 
     // 댓글 엔티티를 넣어서 관계 설정하면 -- 양방향
-    @OneToMany(mappedBy = "board", fetch = FetchType.LAZY)
+    // 해당 게시글이 삭제되면 종속되어 있는 댓글들을 먼저 삭제 해라
+    @OneToMany(mappedBy = "board", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
     private List<Reply> replies = new ArrayList<>(); // 빠른 초기화
 
 
