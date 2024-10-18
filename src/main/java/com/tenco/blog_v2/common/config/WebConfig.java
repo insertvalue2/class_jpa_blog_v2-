@@ -20,9 +20,13 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         // 로그인 인터셉터 등록
         registry.addInterceptor(loginInterceptor)
-                .addPathPatterns("/protected/**")  // 인터셉터를 적용할 경로 패턴 설정
-                .excludePathPatterns("/public/**", "/login", "/logout"); // 인터셉터를 제외할 경로 패턴 설정
+                .addPathPatterns("/board/**", "/user/**", "/reply/**")  // 인터셉터를 적용할 경로 패턴 설정
+                .excludePathPatterns("/board/{id:\\d+}");
+                // 인터셉터 적용에서 제외할 URL 패턴 설정
+                // /board/1, /board/33  <-- 로그인 인터셉터에서 제외
+                // \d+ 숫자 하나 이상을 의미하는 정규 표현식 패턴
 
         // 관리자용 인터셉터 등록
+
     }
 }
